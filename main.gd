@@ -9,11 +9,15 @@ const TILE_HEIGHT = 32
 const MAP_ORIGIN = Vector2(480,75)
 
 var hovered_cell = Vector2i(-1,-1)
+var selected_cell = Vector2i(-1,-1)
+var unit_cell = Vector2i(3,2)
+var unit_selected = false
 
 func _draw() -> void:
 	draw_battlefield()
+	draw_selected_tile()
 	draw_hovered_tile()
-	draw_unit(Vector2i(3,2))
+	draw_unit(unit_cell)
 
 func grid_to_screen(cell: Vector2i) -> Vector2:
 	var screen_x = (cell.x - cell.y) * TILE_WIDTH / 2.0
@@ -127,3 +131,41 @@ func draw_hovered_tile():
 		2.0,
 		true
 		)
+
+func draw_selected_tile():
+	if selected_cell.x < 0:
+		return
+	
+	var center = grid_to_screen(selected_cell)
+	
+	var points = PackedVector2Array([
+		center + Vector2(0, -TILE_HEIGHT/2.0),
+		center + Vector2(TILE_WIDTH/2.0, 0),
+		center + Vector2(0, TILE_HEIGHT/2.0),
+		center + Vector2(-TILE_WIDTH/2.0, 0)
+		])
+	
+	draw_colored_polygon(points, Color(0.2, 0.5, 1.0, 0.45))
+	
+	draw_polyline(
+		PackedVector2Array([
+			points[0],
+			points[1],
+			points[2],
+			points[3],
+			points[0],
+			]),
+		Color("#9cc9ff"),
+		2.0,
+		true
+		)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			var mouse_pos = get_local_mouse_position()
+			var cell = screen_to_grid(mouse_pos)
+			
+			if cell.x >= 0 and cell.x < MAP_WIDTH and cell.y >= 0 and cell.y < MAP_HEIGHT:
+				selected_cell = cell
+				queue_redraw()
