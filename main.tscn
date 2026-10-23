@@ -4,3 +4,32 @@
 
 [node name="Main" type="Node2D" unique_id=786545253]
 script = ExtResource("1_ig7tw")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1590773394]
+
+[node name="UnitInfoPanel" type="PanelContainer" parent="CanvasLayer" unique_id=607352196]
+custom_minimum_size = Vector2(100, 16)
+custom_maximum_size = Vector2(220, 100)
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -40.0
+offset_bottom = 77.0
+grow_horizontal = 0
+offset_transform_enabled = true
+offset_transform_position = Vector2(-100, 16)
+
+[node name="InfoVBox" type="VBoxContainer" parent="CanvasLayer/UnitInfoPanel" unique_id=579686188]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="CanvasLayer/UnitInfoPanel/InfoVBox" unique_id=416542483]
+layout_mode = 2
+text = "Nenhuma Unidade"
+
+[node name="TeamLabel" type="Label" parent="CanvasLayer/UnitInfoPanel/InfoVBox" unique_id=656940082]
+layout_mode = 2
+text = "Equipe : -"
+
+[node name="HPLabel" type="Label" parent="CanvasLayer/UnitInfoPanel/InfoVBox" unique_id=1549897208]
+layout_mode = 2
+text = "HP: -"

@@ -8,17 +8,53 @@ const TILE_HEIGHT = 32
 
 const MAP_ORIGIN = Vector2(480,75)
 
+enum Team {
+	ALLIES,
+	ENEMIES,
+	NEUTRAL
+}
+
 var hovered_cell = Vector2i(-1,-1)
 var selected_cell = Vector2i(-1,-1)
+
+var units = [
+	{
+		"id" = "hero",
+		"name" = "Aldric",
+		"team" = Team.ALLIES,
+		"cell" = Vector2i(3,2),
+		"hp" = 20,
+		"max_hp" = 20
+	},
+	{
+		"id" = "enemy_01",
+		"name" = "Goblin",
+		"team" = Team.ENEMIES,
+		"cell" = Vector2i(6,3),
+		"hp" = 12,
+		"max_hp" = 20
+	}
+]
+var selected_unit_index = -1
+
 var unit_cell = Vector2i(3,2)
 var unit_selected = false
+
+@onready var name_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/NameLabel
+@onready var team_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/TeamLabel
+@onready var hp_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/HPLabel
 
 func _draw() -> void:
 	draw_battlefield()
 	draw_selected_tile()
 	draw_hovered_tile()
-	draw_unit(unit_cell)
-	draw_selected_unit()
+	
+	for i in range(units.size()):
+		var cell = units[i]["cell"]
+		draw_unit(cell)
+		
+		if i == selected_unit_index:
+			draw_selected_unit(cell)
 
 func grid_to_screen(cell: Vector2i) -> Vector2:
 	var screen_x = (cell.x - cell.y) * TILE_WIDTH / 2.0
@@ -140,11 +176,8 @@ func draw_selected_tile():
 		2.0
 	)
 
-func draw_selected_unit():
-	if not unit_selected:
-		return
-	
-	var center = grid_to_screen(unit_cell)
+func draw_selected_unit(cell: Vector2i):
+	var center = grid_to_screen(cell)
 	
 	draw_arc(
 		center + Vector2(0,2),
@@ -166,9 +199,42 @@ func _unhandled_input(event: InputEvent) -> void:
 			if cell.x >= 0 and cell.x < MAP_WIDTH and cell.y >= 0 and cell.y < MAP_HEIGHT:
 				selected_cell = cell
 				
-				if cell == unit_cell:
-					unit_selected = true
-				else:
-					unit_selected = false
-					
+				var clicked_unit_index = -1
+				
+				for i in range(units.size()):
+					if units[i]["cell"] == cell:
+						clicked_unit_index = i
+						break
+				
+				if clicked_unit_index != -1:
+					if selected_unit_index == clicked_unit_index:
+						selected_unit_index = -1
+					else:
+						selected_unit_index = clicked_unit_index
+						
+				update_unit_info()
+				
 				queue_redraw()
+
+
+func update_unit_info():
+	if selected_unit_index == -1:
+		name_label.text = "Nenhuma unidade"
+		team_label.text = "Equipe: —"
+		hp_label.text = "HP: —"
+		return
+	
+	var unit = units[selected_unit_index]
+	name_label.text = unit["name"]
+	
+	match unit["team"]:
+		Team.ALLIES:
+			team_label.text = "Equipe: Aliados"
+		Team.ENEMIES:
+			team_label.text = "Equipe: Inimigos"
+		Team.NEUTRAL:
+			team_label.text = "Equipe: Neutros"
+		_:
+			team_label.text = "Equipe: Desconhecida"
+	
+	hp_label.text = "HP: %d / %d" % [unit["hp"], unit["max_hp"]	]
