@@ -46,6 +46,7 @@ var unit_selected = false
 
 func _draw() -> void:
 	draw_battlefield()
+	draw_movement_range()
 	draw_selected_tile()
 	draw_hovered_tile()
 	
@@ -55,6 +56,9 @@ func _draw() -> void:
 		
 		if i == selected_unit_index:
 			draw_selected_unit(cell)
+
+func _ready() -> void:
+	print(grid_distance(Vector2i(3, 2), Vector2i(5, 3)))
 
 func grid_to_screen(cell: Vector2i) -> Vector2:
 	var screen_x = (cell.x - cell.y) * TILE_WIDTH / 2.0
@@ -74,6 +78,9 @@ func screen_to_grid(mouse_pos: Vector2) ->Vector2i:
 		roundi(grid_x),
 		roundi(grid_y)
 	)
+
+func grid_distance(a: Vector2i, b: Vector2i) -> int:
+	return abs(a.x - b.x) + abs(a.y - b.y)
 
 func draw_tile(
 	center: Vector2,
@@ -201,19 +208,31 @@ func _unhandled_input(event: InputEvent) -> void:
 				
 				var clicked_unit_index = -1
 				
+				# Descobre se existe uma unidade na célula clicada.
 				for i in range(units.size()):
 					if units[i]["cell"] == cell:
 						clicked_unit_index = i
 						break
 				
 				if clicked_unit_index != -1:
+					#o clique foi em uma unidade
 					if selected_unit_index == clicked_unit_index:
 						selected_unit_index = -1
 					else:
 						selected_unit_index = clicked_unit_index
-						
-				update_unit_info()
+				elif selected_unit_index != -1:
+					# O clique foi em uma celula vazia
+					# Existe uma unidade selecionada
+					var current_cell : Vector2i = units[selected_unit_index]["cell"]
+					#unidade pode se deslocar até lá?
+					var distance = grid_distance(current_cell, cell)
+					
+					if distance <= 3:
+						units[selected_unit_index]["cell"] = cell
+					else:
+						print("Destino fora do alcance do movimento!")
 				
+				update_unit_info()				
 				queue_redraw()
 
 
@@ -238,3 +257,29 @@ func update_unit_info():
 			team_label.text = "Equipe: Desconhecida"
 	
 	hp_label.text = "HP: %d / %d" % [unit["hp"], unit["max_hp"]	]
+
+func is_cell_in_movement_range(cell: Vector2i) -> bool:
+	if selected_unit_index == -1:
+		return false
+	
+	var unit_cell: Vector2i = units[selected_unit_index]["cell"]
+	var distance = grid_distance(unit_cell, cell)
+	
+	return distance <= 3
+	
+func draw_movement_range() -> void:
+	if selected_unit_index == -1:
+		return
+	
+	for x in range(MAP_WIDTH):
+		for y in range(MAP_HEIGHT):
+			var cell = Vector2i(x, y)
+			
+			if is_cell_in_movement_range(cell):
+				var center = grid_to_screen(cell)
+				
+				draw_tile(
+					center,
+					Color(0.2, 0.7, 1.0, 0.25),
+					Color(0.2, 0.7, 1.0, 0.65),
+					1.0 )
