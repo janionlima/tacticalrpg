@@ -18,6 +18,7 @@ func _draw() -> void:
 	draw_selected_tile()
 	draw_hovered_tile()
 	draw_unit(unit_cell)
+	draw_selected_unit()
 
 func grid_to_screen(cell: Vector2i) -> Vector2:
 	var screen_x = (cell.x - cell.y) * TILE_WIDTH / 2.0
@@ -38,34 +39,44 @@ func screen_to_grid(mouse_pos: Vector2) ->Vector2i:
 		roundi(grid_y)
 	)
 
+func draw_tile(
+	center: Vector2,
+	fill_color: Color,
+	outline_color: Color,
+	outline_width: float = 1.0
+):
+	var points = PackedVector2Array([
+		center + Vector2(0, -TILE_HEIGHT/2.0),
+		center + Vector2(TILE_WIDTH/2.0, 0),
+		center + Vector2(0, TILE_HEIGHT/2.0),
+		center + Vector2(-TILE_WIDTH/2.0, 0)
+	])
+	
+	draw_colored_polygon(points,fill_color)
+	
+	var outline = PackedVector2Array([
+		points[0],
+		points[1],
+		points[2],
+		points[3],
+		points[0]
+	])
+	
+	draw_polyline(
+		outline, outline_color, outline_width, true
+	)
+
 func draw_battlefield():
 	for y in range(MAP_HEIGHT):
 		for x in range(MAP_WIDTH):
 			var center = grid_to_screen(Vector2i(x,y))
-			
-			var points = PackedVector2Array([
-				center + Vector2(0, -TILE_HEIGHT/2.0),
-				center + Vector2(TILE_WIDTH/2.0, 0),
-				center + Vector2(0, TILE_HEIGHT/2.0),
-				center + Vector2(-TILE_WIDTH/2.0, 0)
-			])
 			
 			var tile_color = Color("#668f50")
 			
 			if (x + y) % 2 == 0:
 				tile_color = Color("#729c59")
 			
-			draw_colored_polygon(points,tile_color)
-			
-			var outline = PackedVector2Array([
-				points[0],
-				points[1],
-				points[2],
-				points[3],
-				points[0]
-			])
-			
-			draw_polyline(outline,Color("#405d38"),1.0,true)
+			draw_tile(center, tile_color, Color("#405d38"))
 
 func draw_unit(cell: Vector2i):
 	var center = grid_to_screen(cell)
@@ -110,27 +121,11 @@ func draw_hovered_tile():
 	
 	var center = grid_to_screen(hovered_cell)
 	
-	var points = PackedVector2Array([
-		center + Vector2(0, -TILE_HEIGHT/2.0),
-		center + Vector2(TILE_WIDTH/2.0, 0),
-		center + Vector2(0, TILE_HEIGHT/2.0),
-		center + Vector2(-TILE_WIDTH/2.0, 0)
-		])
-	
-	draw_colored_polygon(points, Color(1.0, 0.85, 0.2, 0.45))
-	
-	draw_polyline(
-		PackedVector2Array([
-			points[0],
-			points[1],
-			points[2],
-			points[3],
-			points[0],
-			]),
-		Color("#405d38"),
-		2.0,
-		true
-		)
+	draw_tile(
+		center,
+		Color(1.0, 0.85, 0.2, 0.45),
+		Color("#fff2a0"),
+		2.0)
 
 func draw_selected_tile():
 	if selected_cell.x < 0:
@@ -138,27 +133,29 @@ func draw_selected_tile():
 	
 	var center = grid_to_screen(selected_cell)
 	
-	var points = PackedVector2Array([
-		center + Vector2(0, -TILE_HEIGHT/2.0),
-		center + Vector2(TILE_WIDTH/2.0, 0),
-		center + Vector2(0, TILE_HEIGHT/2.0),
-		center + Vector2(-TILE_WIDTH/2.0, 0)
-		])
-	
-	draw_colored_polygon(points, Color(0.2, 0.5, 1.0, 0.45))
-	
-	draw_polyline(
-		PackedVector2Array([
-			points[0],
-			points[1],
-			points[2],
-			points[3],
-			points[0],
-			]),
+	draw_tile(
+		center,
+		Color(0.2, 0.5, 1.0, 0.45),
 		Color("#9cc9ff"),
+		2.0
+	)
+
+func draw_selected_unit():
+	if not unit_selected:
+		return
+	
+	var center = grid_to_screen(unit_cell)
+	
+	draw_arc(
+		center + Vector2(0,2),
+		14.0,
+		0.0,
+		TAU,
+		32,
+		Color("#8de5ff"),
 		2.0,
 		true
-		)
+	)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -168,4 +165,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			
 			if cell.x >= 0 and cell.x < MAP_WIDTH and cell.y >= 0 and cell.y < MAP_HEIGHT:
 				selected_cell = cell
+				
+				if cell == unit_cell:
+					unit_selected = true
+				else:
+					unit_selected = false
+					
 				queue_redraw()
