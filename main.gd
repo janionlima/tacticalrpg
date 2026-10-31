@@ -14,6 +14,8 @@ enum Team {
 	NEUTRAL
 }
 
+var current_turn_team:Team = Team.ALLIES
+
 var hovered_cell = Vector2i(-1,-1)
 var selected_cell = Vector2i(-1,-1)
 
@@ -24,7 +26,8 @@ var units = [
 		"team" = Team.ALLIES,
 		"cell" = Vector2i(3,2),
 		"hp" = 20,
-		"max_hp" = 20
+		"max_hp" = 20,
+		"has_moved" = false
 	},
 	{
 		"id" = "enemy_01",
@@ -32,7 +35,8 @@ var units = [
 		"team" = Team.ENEMIES,
 		"cell" = Vector2i(6,3),
 		"hp" = 12,
-		"max_hp" = 20
+		"max_hp" = 20,
+		"has_moved" = false
 	}
 ]
 var selected_unit_index = -1
@@ -43,6 +47,7 @@ var unit_selected = false
 @onready var name_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/NameLabel
 @onready var team_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/TeamLabel
 @onready var hp_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/HPLabel
+@onready var new_turno_button: Button = $CanvasLayer/UnitInfoPanel/InfoVBox/NewTurnButton
 
 func _draw() -> void:
 	draw_battlefield()
@@ -59,6 +64,7 @@ func _draw() -> void:
 
 func _ready() -> void:
 	print(grid_distance(Vector2i(3, 2), Vector2i(5, 3)))
+	new_turno_button.pressed.connect(reset_turn)
 
 func grid_to_screen(cell: Vector2i) -> Vector2:
 	var screen_x = (cell.x - cell.y) * TILE_WIDTH / 2.0
@@ -81,6 +87,12 @@ func screen_to_grid(mouse_pos: Vector2) ->Vector2i:
 
 func grid_distance(a: Vector2i, b: Vector2i) -> int:
 	return abs(a.x - b.x) + abs(a.y - b.y)
+
+func is_cell_occupied(cell: Vector2i) -> bool:
+	for i in range(units.size()):
+		if units[i]["cell"] == cell:
+			return true
+	return false
 
 func draw_tile(
 	center: Vector2,
@@ -216,21 +228,34 @@ func _unhandled_input(event: InputEvent) -> void:
 				
 				if clicked_unit_index != -1:
 					#o clique foi em uma unidade
-					if selected_unit_index == clicked_unit_index:
-						selected_unit_index = -1
-					else:
-						selected_unit_index = clicked_unit_index
-				elif selected_unit_index != -1:
-					# O clique foi em uma celula vazia
-					# Existe uma unidade selecionada
-					var current_cell : Vector2i = units[selected_unit_index]["cell"]
-					#unidade pode se deslocar até lá?
-					var distance = grid_distance(current_cell, cell)
+					var clicked_unit = units[clicked_unit_index]
 					
-					if distance <= 3:
-						units[selected_unit_index]["cell"] = cell
+					if clicked_unit_index == selected_unit_index:
+						selected_unit_index = -1
+					elif clicked_unit["team"] != current_turn_team:
+						print("Esta unidade não pertence à equipe do turno atual")
+					elif selected_unit_index == -1:
+						selected_unit_index = clicked_unit_index					
 					else:
-						print("Destino fora do alcance do movimento!")
+						print("Esta célula já está ocupada!")
+						
+				elif selected_unit_index != -1:
+					var unit = units[selected_unit_index]
+					
+					if unit["has_moved"]:
+						print("Esta unidade já se moveu neste turno")
+					else:
+						var current_cell : Vector2i = units[selected_unit_index]["cell"]
+						#unidade pode se deslocar até lá?
+						var distance = grid_distance(current_cell, cell)
+						
+						if distance > 3:
+							print("Destino fora do alcance do movimento!")
+						elif is_cell_occupied(cell):
+							print("Esta célula já está ocupada!")
+						else:
+							unit["cell"] = cell
+							unit["has_moved"] = true
 				
 				update_unit_info()				
 				queue_redraw()
@@ -262,6 +287,9 @@ func is_cell_in_movement_range(cell: Vector2i) -> bool:
 	if selected_unit_index == -1:
 		return false
 	
+	if units[selected_unit_index]["has_moved"]:
+		return false
+	
 	var unit_cell: Vector2i = units[selected_unit_index]["cell"]
 	var distance = grid_distance(unit_cell, cell)
 	
@@ -278,8 +306,32 @@ func draw_movement_range() -> void:
 			if is_cell_in_movement_range(cell):
 				var center = grid_to_screen(cell)
 				
-				draw_tile(
+				if is_cell_occupied(cell):
+					draw_tile(
+					center,
+					Color(1.0, 0.2, 0.2, 0.35),
+					Color(1.0, 0.2, 0.2, 0.8),
+					1.0 )
+				else:
+					draw_tile(
 					center,
 					Color(0.2, 0.7, 1.0, 0.25),
 					Color(0.2, 0.7, 1.0, 0.65),
 					1.0 )
+
+func reset_turn() ->void:
+	if current_turn_team == Team.ALLIES:
+		current_turn_team = Team.ENEMIES
+	else:
+		current_turn_team = Team.ALLIES
+		
+	selected_unit_index = -1
+	selected_cell = Vector2i(-1, -1)
+	
+	for i in range(units.size()):
+		if units[i]["team"] == current_turn_team:
+			units[i]["has_moved"] = false
+	
+	print("Turno atual: ", current_turn_team)
+	update_unit_info()
+	queue_redraw()
