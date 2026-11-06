@@ -330,21 +330,11 @@ func draw_movement_range() -> void:
 
 func reset_turn() ->void:
 	if current_turn_team == Team.ALLIES:
-		current_turn_team = Team.ENEMIES
+		start_turn(Team.ENEMIES)		
 	else:
-		current_turn_team = Team.ALLIES
-		
-	selected_unit_index = -1
-	selected_cell = Vector2i(-1, -1)
+		start_turn(Team.ALLIES)		
 	
-	for i in range(units.size()):
-		if units[i]["team"] == current_turn_team:
-			units[i]["has_moved"] = false
-	
-	print("Turno atual: ", current_turn_team)
-	update_unit_info()
-	update_turn_info()
-	queue_redraw()
+	print("Novo Turno Iniciado!")	
 
 func start_turn(team: Team) -> void:
 	current_turn_team = team
@@ -359,3 +349,74 @@ func start_turn(team: Team) -> void:
 	update_unit_info()
 	update_turn_info()
 	queue_redraw()
+	
+	if current_turn_team == Team.ENEMIES:
+		run_enemy_turn()
+
+func run_enemy_turn() ->void:
+	print("Iniciando turno dos inimigos")
+	
+	for i in range(units.size()):
+		if units[i]["team"] == Team.ENEMIES:
+			var enemy = units[i]
+			var target_index = find_nearest_ally(enemy["cell"])
+			
+			if target_index != -1:
+				var target = units[target_index]
+				print(
+					enemy["name"],
+					" escolheu ",
+					target["name"],
+					" como alvo!"
+				)
+				var destination = find_best_move(enemy["cell"], target["cell"])
+				
+				if destination != enemy["cell"]:
+					units[i]["cell"] = destination
+					units[i]["has_moved"] = "true"
+					
+					print(enemy["name"], " se moveu para ", destination)
+				else:
+					print(enemy["name"], " não encontrou um movimento válido")
+			else:
+				print(enemy["name"], " não encontrou aliados!")	
+
+func find_nearest_ally(enemy_cell: Vector2i) -> int:
+	var nearest_ally_index = -1
+	var shortest_distance = 999999
+	
+	for i in range(units.size()):
+		if units[i]["team"] == Team.ALLIES:
+			var ally_cell : Vector2i = units[i]["cell"]
+			var distance = grid_distance(enemy_cell, ally_cell)
+			
+			if distance < shortest_distance:
+				shortest_distance = distance
+				nearest_ally_index = i
+	
+	return nearest_ally_index
+
+func find_best_move(enemy_cell: Vector2i, target_cell: Vector2i) -> Vector2i:
+	var best_cell = enemy_cell
+	var shortest_distance = grid_distance(enemy_cell, target_cell)
+	
+	for x in range(MAP_WIDTH):
+		for y in range(MAP_HEIGHT):
+			var candidate_cell = Vector2i(x,y)
+			
+			if is_cell_occupied(candidate_cell):
+				continue
+			
+			var movement_distance = grid_distance(enemy_cell, candidate_cell)
+			
+			if movement_distance > 3:
+				continue
+			
+			var distance_to_target = grid_distance(candidate_cell, target_cell)
+			
+			if distance_to_target < shortest_distance:
+				shortest_distance = distance_to_target
+				best_cell = candidate_cell
+	
+	return best_cell
+	
