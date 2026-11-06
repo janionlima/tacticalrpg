@@ -9,20 +9,24 @@ script = ExtResource("1_ig7tw")
 
 [node name="UnitInfoPanel" type="PanelContainer" parent="CanvasLayer" unique_id=607352196]
 custom_minimum_size = Vector2(100, 16)
-custom_maximum_size = Vector2(220, 100)
+custom_maximum_size = Vector2(240, 250)
 anchors_preset = -1
 anchor_left = 0.964
 anchor_top = 0.02
 anchor_right = 0.982
 anchor_bottom = 0.055
-offset_left = -146.0
-offset_bottom = 100.0
+offset_left = -148.72003
+offset_bottom = 81.100006
 grow_horizontal = 0
 offset_transform_enabled = true
 offset_transform_position_ratio = Vector2(0.01, 0)
 
 [node name="InfoVBox" type="VBoxContainer" parent="CanvasLayer/UnitInfoPanel" unique_id=579686188]
 layout_mode = 2
+
+[node name="TurnLabel" type="Label" parent="CanvasLayer/UnitInfoPanel/InfoVBox" unique_id=1053171063]
+layout_mode = 2
+text = "TURNO DOS ALIADOS"
 
 [node name="NameLabel" type="Label" parent="CanvasLayer/UnitInfoPanel/InfoVBox" unique_id=416542483]
 layout_mode = 2

@@ -48,6 +48,7 @@ var unit_selected = false
 @onready var team_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/TeamLabel
 @onready var hp_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/HPLabel
 @onready var new_turno_button: Button = $CanvasLayer/UnitInfoPanel/InfoVBox/NewTurnButton
+@onready var turn_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/TurnLabel
 
 func _draw() -> void:
 	draw_battlefield()
@@ -283,6 +284,14 @@ func update_unit_info():
 	
 	hp_label.text = "HP: %d / %d" % [unit["hp"], unit["max_hp"]	]
 
+func update_turn_info() -> void:
+	if current_turn_team == Team.ALLIES:
+		turn_label.text = "TURNO DOS ALIADOS"
+	elif current_turn_team == Team.ENEMIES:
+		turn_label.text = "TURNO DOS INIMIGOS"
+	else:
+		turn_label.text = "TURNO NEUTRO"	
+
 func is_cell_in_movement_range(cell: Vector2i) -> bool:
 	if selected_unit_index == -1:
 		return false
@@ -334,4 +343,19 @@ func reset_turn() ->void:
 	
 	print("Turno atual: ", current_turn_team)
 	update_unit_info()
+	update_turn_info()
+	queue_redraw()
+
+func start_turn(team: Team) -> void:
+	current_turn_team = team
+	
+	selected_unit_index = -1
+	selected_cell = Vector2i(-1, -1)
+	
+	for i in range(units.size()):
+		if units[i]["team"] == current_turn_team:
+			units[i]["has_moved"] = false
+	
+	update_unit_info()
+	update_turn_info()
 	queue_redraw()
