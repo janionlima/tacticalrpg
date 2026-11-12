@@ -8,6 +8,8 @@ const TILE_HEIGHT = 32
 
 const MAP_ORIGIN = Vector2(480,75)
 
+const GOBLIN_DAMAGE = 5
+
 enum Team {
 	ALLIES,
 	ENEMIES,
@@ -360,8 +362,9 @@ func run_enemy_turn() ->void:
 		if units[i]["team"] == Team.ENEMIES:
 			var enemy = units[i]
 			var target_index = find_nearest_ally(enemy["cell"])
-			
+						
 			if target_index != -1:
+				#inimigo escolhe o alvo
 				var target = units[target_index]
 				print(
 					enemy["name"],
@@ -369,15 +372,23 @@ func run_enemy_turn() ->void:
 					target["name"],
 					" como alvo!"
 				)
+				#inimigo se move para próximo ao alvo
 				var destination = find_best_move(enemy["cell"], target["cell"])
 				
 				if destination != enemy["cell"]:
 					units[i]["cell"] = destination
-					units[i]["has_moved"] = "true"
+					units[i]["has_moved"] = true
 					
-					print(enemy["name"], " se moveu para ", destination)
+					print(enemy["name"], " se moveu para ", destination)					
 				else:
 					print(enemy["name"], " não encontrou um movimento válido")
+				
+				# Verifica o alcance de ataque após a movimentação.
+				if can_attack(enemy["cell"], target["cell"]):
+						print(enemy["name"]," está ao alcance do ataque! ")
+						attack(i, target_index)
+				else:
+						print(enemy["name"], " ainda está longe demais para atacar! ")
 			else:
 				print(enemy["name"], " não encontrou aliados!")	
 
@@ -420,3 +431,25 @@ func find_best_move(enemy_cell: Vector2i, target_cell: Vector2i) -> Vector2i:
 	
 	return best_cell
 	
+func can_attack(attacker_cell: Vector2i, target_cell: Vector2i) -> bool:
+	return grid_distance(attacker_cell, target_cell) == 1
+	
+func attack(attacker_index:int, target_index: int) -> void:
+	var attacker = units[attacker_index]
+	var target = units[target_index]
+	
+	target["hp"] = max(0, target["hp"] - GOBLIN_DAMAGE)
+	print(
+		attacker["name"],
+		" atacou ",
+		target["name"],
+		" causando ",
+		GOBLIN_DAMAGE,
+		" pontos de dano!"
+	)
+	print(
+		target["name"],
+		" possui agora ",
+		target["hp"],
+		" HP."
+	)
