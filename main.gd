@@ -32,6 +32,7 @@ var units = [
 		"hp" = 20,
 		"max_hp" = 20,
 		"has_moved" = false,
+		"has_acted" = false,
 		"is_alive" = true,
 		"is_incapacitated" = false,
 		"incapacitation_turns" = 0
@@ -44,8 +45,22 @@ var units = [
 		"hp" = 12,
 		"max_hp" = 20,
 		"has_moved" = false,
+		"has_acted" = false,
 		"is_alive" = true,
 		"is_incapacitated" = false,
+		"incapacitation_turns" = 0
+	},
+	{
+		"id" = "elara",
+		"name" = "Elara",
+		"team" = Team.ALLIES,
+		"cell" = Vector2i(2, 4),
+		"hp"= 16,
+		"max_hp" = 16,
+		"has_moved" = false,
+		"has_acted" = false,
+		"is_alive" = true,
+		"is_incapacitated"= false,
 		"incapacitation_turns" = 0
 	}
 ]
