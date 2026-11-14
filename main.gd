@@ -10,6 +10,8 @@ const MAP_ORIGIN = Vector2(480,75)
 
 const GOBLIN_DAMAGE = 5
 
+const INCAPACITATION_LIMIT = 3
+
 enum Team {
 	ALLIES,
 	ENEMIES,
@@ -29,7 +31,10 @@ var units = [
 		"cell" = Vector2i(3,2),
 		"hp" = 20,
 		"max_hp" = 20,
-		"has_moved" = false
+		"has_moved" = false,
+		"is_alive" = true,
+		"is_incapacitated" = false,
+		"incapacitation_turns" = 0
 	},
 	{
 		"id" = "enemy_01",
@@ -38,7 +43,10 @@ var units = [
 		"cell" = Vector2i(6,3),
 		"hp" = 12,
 		"max_hp" = 20,
-		"has_moved" = false
+		"has_moved" = false,
+		"is_alive" = true,
+		"is_incapacitated" = false,
+		"incapacitation_turns" = 0
 	}
 ]
 var selected_unit_index = -1
@@ -60,9 +68,13 @@ func _draw() -> void:
 	
 	for i in range(units.size()):
 		var cell = units[i]["cell"]
-		draw_unit(cell)
 		
-		if i == selected_unit_index:
+		if is_incapacitated(i) or not is_alive(i):
+			draw_incapacitated_unit(cell)
+		else:
+			draw_unit(cell)
+		
+		if i == selected_unit_index and is_unit_active(i):
 			draw_selected_unit(cell)
 
 func _ready() -> void:
@@ -93,7 +105,7 @@ func grid_distance(a: Vector2i, b: Vector2i) -> int:
 
 func is_cell_occupied(cell: Vector2i) -> bool:
 	for i in range(units.size()):
-		if units[i]["cell"] == cell:
+		if units[i]["cell"] == cell and is_unit_active(i):
 			return true
 	return false
 
@@ -162,6 +174,38 @@ func draw_unit(cell: Vector2i):
 		Color("#e8bd91")
 		)
 
+func draw_incapacitated_unit(cell: Vector2i) -> void:
+	var center = grid_to_screen(cell)
+	
+	# Sombra elíptica
+	var shadow_points = PackedVector2Array()
+	
+	for angle in range(16):
+		var point_angle = TAU * angle / 16.0
+		shadow_points.append(
+			center + Vector2(0, 6) +
+			Vector2(cos(point_angle) * 12, sin(point_angle) * 5)
+		)
+	
+	draw_colored_polygon(shadow_points, Color("#344b30"))
+	
+	#corpo deitado da unidade
+	var body = PackedVector2Array([
+		center + Vector2(-11,-3),
+		center + Vector2(7,-5),
+		center + Vector2(11,2),
+		center + Vector2(-7,5)
+	])
+	
+	draw_colored_polygon(body, Color("#365fb8"))
+	
+	#cabeça
+	draw_circle(
+		center + Vector2(12, -3),
+		5,
+		Color("#e8bd91")
+	)
+
 func _process(_delta: float) -> void:
 	var mouse_pos = get_local_mouse_position()
 	var cell = screen_to_grid(mouse_pos)
@@ -225,7 +269,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				
 				# Descobre se existe uma unidade na célula clicada.
 				for i in range(units.size()):
-					if units[i]["cell"] == cell:
+					if units[i]["cell"] == cell and is_unit_active(i):
 						clicked_unit_index = i
 						break
 				
@@ -264,14 +308,16 @@ func _unhandled_input(event: InputEvent) -> void:
 				queue_redraw()
 
 
-func update_unit_info():
-	if selected_unit_index == -1:
+func update_unit_info(unit_index: int = -1):
+	var index_to_display = selected_unit_index if unit_index == -1 else unit_index
+	
+	if index_to_display == -1:
 		name_label.text = "Nenhuma unidade"
 		team_label.text = "Equipe: —"
 		hp_label.text = "HP: —"
 		return
 	
-	var unit = units[selected_unit_index]
+	var unit = units[index_to_display]
 	name_label.text = unit["name"]
 	
 	match unit["team"]:
@@ -397,7 +443,7 @@ func find_nearest_ally(enemy_cell: Vector2i) -> int:
 	var shortest_distance = 999999
 	
 	for i in range(units.size()):
-		if units[i]["team"] == Team.ALLIES:
+		if units[i]["team"] == Team.ALLIES and is_unit_active(i):
 			var ally_cell : Vector2i = units[i]["cell"]
 			var distance = grid_distance(enemy_cell, ally_cell)
 			
@@ -438,7 +484,14 @@ func attack(attacker_index:int, target_index: int) -> void:
 	var attacker = units[attacker_index]
 	var target = units[target_index]
 	
+	if not is_unit_active(attacker_index):
+		return
+	
+	if not is_unit_active(target_index):
+		return
+	
 	target["hp"] = max(0, target["hp"] - GOBLIN_DAMAGE)
+	
 	print(
 		attacker["name"],
 		" atacou ",
@@ -453,3 +506,23 @@ func attack(attacker_index:int, target_index: int) -> void:
 		target["hp"],
 		" HP."
 	)
+	
+	if target["hp"] == 0 and not is_incapacitated(target_index):
+		target["is_incapacitated"] = true
+		print(target["name"], " foi incapacitado! ")
+		print(
+			" A célula de ",
+			target["name"],
+			"Está ocupada? ",
+			is_cell_occupied(target["cell"])
+		)		
+	update_unit_info(target_index)
+
+func is_alive(unit_index: int) -> bool:
+	return units[unit_index]["is_alive"]
+
+func is_incapacitated(unit_index: int) -> bool:
+	return units[unit_index]["is_incapacitated"]
+
+func is_unit_active(unit_index: int) -> bool:
+	return is_alive(unit_index) and not is_incapacitated(unit_index)
