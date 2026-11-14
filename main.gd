@@ -59,6 +59,7 @@ var unit_selected = false
 @onready var hp_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/HPLabel
 @onready var new_turno_button: Button = $CanvasLayer/UnitInfoPanel/InfoVBox/NewTurnButton
 @onready var turn_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/TurnLabel
+@onready var revive_button: Button = $CanvasLayer/UnitInfoPanel/InfoVBox/ReviveButton
 
 func _draw() -> void:
 	draw_battlefield()
@@ -80,6 +81,10 @@ func _draw() -> void:
 func _ready() -> void:
 	print(grid_distance(Vector2i(3, 2), Vector2i(5, 3)))
 	new_turno_button.pressed.connect(reset_turn)
+	revive_button.pressed.connect(_on_revive_button_pressed)	
+
+func _on_revive_button_pressed() -> void:
+	revive_unit(0)
 
 func grid_to_screen(cell: Vector2i) -> Vector2:
 	var screen_x = (cell.x - cell.y) * TILE_WIDTH / 2.0
@@ -377,12 +382,11 @@ func draw_movement_range() -> void:
 					1.0 )
 
 func reset_turn() ->void:
-	if current_turn_team == Team.ALLIES:
-		start_turn(Team.ENEMIES)		
-	else:
-		start_turn(Team.ALLIES)		
+	if current_turn_team != Team.ALLIES:
+		return
 	
-	print("Novo Turno Iniciado!")	
+	print("Encerrando turno de Aliados!")
+	start_turn(Team.ENEMIES)
 
 func start_turn(team: Team) -> void:
 	current_turn_team = team
@@ -393,6 +397,23 @@ func start_turn(team: Team) -> void:
 	for i in range(units.size()):
 		if units[i]["team"] == current_turn_team:
 			units[i]["has_moved"] = false
+			
+			if is_alive(i) and is_incapacitated(i):
+				units[i]["incapacitation_turns"] -= 1
+				print(
+					units[i]["name"],
+					" possui ",
+					units[i]["incapacitation_turns"],
+					" restantes!"
+				)
+				
+				if units[i]["incapacitation_turns"] <= 0:
+					units[i]["is_alive"] = false
+					print(
+						units[i]["name"],
+						"morreu definitivamente!"
+					)
+			
 	
 	update_unit_info()
 	update_turn_info()
@@ -437,6 +458,9 @@ func run_enemy_turn() ->void:
 						print(enemy["name"], " ainda está longe demais para atacar! ")
 			else:
 				print(enemy["name"], " não encontrou aliados!")	
+	
+	print("Turno dos inimigos concluído!")
+	start_turn(Team.ALLIES)
 
 func find_nearest_ally(enemy_cell: Vector2i) -> int:
 	var nearest_ally_index = -1
@@ -509,12 +533,15 @@ func attack(attacker_index:int, target_index: int) -> void:
 	
 	if target["hp"] == 0 and not is_incapacitated(target_index):
 		target["is_incapacitated"] = true
+		target["incapacitation_turns"] = INCAPACITATION_LIMIT
+		
 		print(target["name"], " foi incapacitado! ")
 		print(
-			" A célula de ",
+			" Tempo restante para ",
 			target["name"],
-			"Está ocupada? ",
-			is_cell_occupied(target["cell"])
+			" : ",
+			target["incapacitation_turns"],
+			" turnos!"
 		)		
 	update_unit_info(target_index)
 
@@ -526,3 +553,27 @@ func is_incapacitated(unit_index: int) -> bool:
 
 func is_unit_active(unit_index: int) -> bool:
 	return is_alive(unit_index) and not is_incapacitated(unit_index)
+
+func revive_unit(unit_index: int) -> void:
+	if not is_alive(unit_index):
+		print("Esta unidade morreu definitivamente!")
+		return
+	
+	if not is_incapacitated(unit_index):
+		print("Esta unidade não está incapacitada!")
+		return
+	
+	var unit = units[unit_index]
+	unit["hp"] = ceili(unit["max_hp"] * 0.5)
+	unit["is_incapacitated"] = false
+	unit["incapacitation_turns"] = 0
+	
+	print(
+		unit["name"],
+		" retornou com ",
+		unit["hp"],
+		" HP."
+	)
+	
+	update_unit_info(unit_index)
+	queue_redraw()

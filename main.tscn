@@ -43,3 +43,7 @@ text = "HP: -"
 [node name="NewTurnButton" type="Button" parent="CanvasLayer/UnitInfoPanel/InfoVBox" unique_id=1603495957]
 layout_mode = 2
 text = "Novo Turno"
+
+[node name="ReviveButton" type="Button" parent="CanvasLayer/UnitInfoPanel/InfoVBox" unique_id=1132385494]
+layout_mode = 2
+text = "Ressuscitar Aldric"
