@@ -75,6 +75,7 @@ var selected_unit_index = -1
 
 var unit_cell = Vector2i(3,2)
 var unit_selected = false
+var battle_ended:bool = false
 
 @onready var name_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/NameLabel
 @onready var team_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/TeamLabel
@@ -378,7 +379,9 @@ func _unhandled_input(event: InputEvent) -> void:
 					elif selected_unit_index != -1:
 						var unit = units[selected_unit_index]
 						
-						if unit["has_moved"]:
+						if unit["has_acted"]:
+							print("Esta unidade já executou uma ação neste turno!")
+						elif unit["has_moved"]:
 							print("Esta unidade já se moveu neste turno")
 						else:
 							var current_cell : Vector2i = units[selected_unit_index]["cell"]
@@ -473,6 +476,8 @@ func reset_turn() ->void:
 	start_turn(Team.ENEMIES)
 
 func start_turn(team: Team) -> void:
+	if battle_ended:
+		return
 	current_turn_team = team
 	current_action_mode = ActionMode.NONE
 	
@@ -509,6 +514,8 @@ func start_turn(team: Team) -> void:
 		run_enemy_turn()
 
 func run_enemy_turn() ->void:
+	if battle_ended:
+		return
 	print("Iniciando turno dos inimigos")
 	
 	for i in range(units.size()):
@@ -540,6 +547,8 @@ func run_enemy_turn() ->void:
 				if can_attack(enemy["cell"], target["cell"]):
 						print(enemy["name"]," está ao alcance do ataque! ")
 						attack(i, target_index)
+						if battle_ended:
+							return
 				else:
 						print(enemy["name"], " ainda está longe demais para atacar! ")
 			else:
@@ -630,6 +639,7 @@ func attack(attacker_index:int, target_index: int) -> void:
 			" turnos!"
 		)		
 	update_unit_info(target_index)
+	check_game_over()
 
 func is_alive(unit_index: int) -> bool:
 	return units[unit_index]["is_alive"]
@@ -663,3 +673,24 @@ func revive_unit(unit_index: int) -> void:
 	
 	update_unit_info(unit_index)
 	queue_redraw()
+
+func check_game_over()-> void:
+	var active_allies = 0
+	
+	for i in range(units.size()):
+		if units[i]["team"] == Team.ALLIES and is_unit_active(i):
+			active_allies += 1
+	
+	if active_allies == 0:
+		battle_ended = true
+		current_action_mode = ActionMode.NONE
+		selected_unit_index = -1
+		selected_cell = Vector2i(-1,-1)
+		
+		print("================================")
+		print("GAME OVER!")
+		print("Todos os aliados foram derrotados!")
+		print("================================")
+		
+		update_unit_info()
+		queue_redraw()
