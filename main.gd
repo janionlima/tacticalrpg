@@ -18,7 +18,14 @@ enum Team {
 	NEUTRAL
 }
 
+enum ActionMode{
+	NONE,
+	ATTACK,
+	REVIVE
+}
+
 var current_turn_team:Team = Team.ALLIES
+var current_action_mode:ActionMode = ActionMode.NONE
 
 var hovered_cell = Vector2i(-1,-1)
 var selected_cell = Vector2i(-1,-1)
@@ -75,6 +82,7 @@ var unit_selected = false
 @onready var new_turno_button: Button = $CanvasLayer/UnitInfoPanel/InfoVBox/NewTurnButton
 @onready var turn_label: Label = $CanvasLayer/UnitInfoPanel/InfoVBox/TurnLabel
 @onready var revive_button: Button = $CanvasLayer/UnitInfoPanel/InfoVBox/ReviveButton
+@onready var attack_button: Button = $CanvasLayer/UnitInfoPanel/InfoVBox/AttackButton
 
 func _draw() -> void:
 	draw_battlefield()
@@ -96,10 +104,16 @@ func _draw() -> void:
 func _ready() -> void:
 	print(grid_distance(Vector2i(3, 2), Vector2i(5, 3)))
 	new_turno_button.pressed.connect(reset_turn)
-	revive_button.pressed.connect(_on_revive_button_pressed)	
+	revive_button.pressed.connect(_on_revive_button_pressed)
+	attack_button.pressed.connect(_on_attack_button_pressed)
 
 func _on_revive_button_pressed() -> void:
-	revive_unit(0)
+	current_action_mode = ActionMode.REVIVE
+	print("Modo de Ressurreição ativado")
+
+func _on_attack_button_pressed() -> void:
+	current_action_mode = ActionMode.ATTACK
+	print("Modo de Ataque ativado")
 
 func grid_to_screen(cell: Vector2i) -> Vector2:
 	var screen_x = (cell.x - cell.y) * TILE_WIDTH / 2.0
@@ -289,40 +303,95 @@ func _unhandled_input(event: InputEvent) -> void:
 				
 				# Descobre se existe uma unidade na célula clicada.
 				for i in range(units.size()):
-					if units[i]["cell"] == cell and is_unit_active(i):
+					if units[i]["cell"] == cell:
 						clicked_unit_index = i
 						break
 				
-				if clicked_unit_index != -1:
-					#o clique foi em uma unidade
-					var clicked_unit = units[clicked_unit_index]
+				if current_action_mode == ActionMode.ATTACK:
 					
 					if clicked_unit_index == selected_unit_index:
+						current_action_mode = ActionMode.NONE
 						selected_unit_index = -1
-					elif clicked_unit["team"] != current_turn_team:
-						print("Esta unidade não pertence à equipe do turno atual")
+						print("Modo de ataque cancelado!")
 					elif selected_unit_index == -1:
-						selected_unit_index = clicked_unit_index					
+						print("Selecione uma unidade aliada primeiro!")
+					elif  not is_alive(selected_unit_index):
+						print("Esta unidade não pode executar ações!")
+					elif units[selected_unit_index]["has_acted"]:
+						print("Esta unidade já executou uma ação neste turno!")
+					elif clicked_unit_index == -1:
+						print("Selecione uma unidade inimiga!")
 					else:
-						print("Esta célula já está ocupada!")
+						var attacker = units[selected_unit_index]
+						var target = units[clicked_unit_index]
 						
-				elif selected_unit_index != -1:
-					var unit = units[selected_unit_index]
-					
-					if unit["has_moved"]:
-						print("Esta unidade já se moveu neste turno")
-					else:
-						var current_cell : Vector2i = units[selected_unit_index]["cell"]
-						#unidade pode se deslocar até lá?
-						var distance = grid_distance(current_cell, cell)
-						
-						if distance > 3:
-							print("Destino fora do alcance do movimento!")
-						elif is_cell_occupied(cell):
-							print("Esta célula já está ocupada!")
+						if target["team"] == attacker["team"] or target["team"] == Team.NEUTRAL:
+							print("Selecione uma unidade inimiga!")
+						elif not can_attack(attacker["cell"], target["cell"]):
+							print("Alvo fora do alcance do ataque!")
 						else:
-							unit["cell"] = cell
-							unit["has_moved"] = true
+							attack(selected_unit_index, clicked_unit_index)
+							attacker["has_acted"] = true
+							current_action_mode = ActionMode.NONE
+				elif current_action_mode == ActionMode.REVIVE:
+					#Código do modo de ressurreição
+					if clicked_unit_index == selected_unit_index:
+						current_action_mode = ActionMode.NONE
+						selected_unit_index = -1
+						print("Modo de ressurreição cancelado!")
+					
+					if selected_unit_index == -1:
+						print("Selecione uma unidade aliada primeiro!")
+					elif not is_unit_active(selected_unit_index):
+						print("Esta unidade não pode executar ações!")
+					elif units[selected_unit_index]["has_acted"]:
+						print("Esta unidade já executou uma ação neste turno!")
+					elif clicked_unit_index == -1:
+						print("Selecione uma unidade aliada incapacitada!")
+					elif units[clicked_unit_index]["team"] != Team.ALLIES:
+						print("Só é possível ressucitar unidades aliadas!")
+					elif not is_alive(clicked_unit_index):
+						print("Esta unidade morreu definitivamente!")
+					elif not is_incapacitated(clicked_unit_index):
+						print("Esta unidade não está incapacitada!")
+					elif not can_attack(units[selected_unit_index]["cell"], units[clicked_unit_index]["cell"]):
+						print("Unidade incapacitada fora do alcance da ressurreição!")
+					else:
+						revive_unit(clicked_unit_index)
+						units[selected_unit_index]["has_acted"] = true
+						current_action_mode = ActionMode.NONE
+				#MODO NORMAL: seleção e movimentação
+				else:
+					if clicked_unit_index != -1:
+						#o clique foi em uma unidade
+						var clicked_unit = units[clicked_unit_index]
+					
+						if clicked_unit_index == selected_unit_index:
+							selected_unit_index = -1
+						elif clicked_unit["team"] != current_turn_team:
+							print("Esta unidade não pertence à equipe do turno atual")
+						elif selected_unit_index == -1:
+							selected_unit_index = clicked_unit_index					
+						else:
+							print("Esta célula já está ocupada!")
+							
+					elif selected_unit_index != -1:
+						var unit = units[selected_unit_index]
+						
+						if unit["has_moved"]:
+							print("Esta unidade já se moveu neste turno")
+						else:
+							var current_cell : Vector2i = units[selected_unit_index]["cell"]
+							#unidade pode se deslocar até lá?
+							var distance = grid_distance(current_cell, cell)
+							
+							if distance > 3:
+								print("Destino fora do alcance do movimento!")
+							elif is_cell_occupied(cell):
+								print("Esta célula já está ocupada!")
+							else:
+								unit["cell"] = cell
+								unit["has_moved"] = true
 				
 				update_unit_info()				
 				queue_redraw()
@@ -405,6 +474,7 @@ func reset_turn() ->void:
 
 func start_turn(team: Team) -> void:
 	current_turn_team = team
+	current_action_mode = ActionMode.NONE
 	
 	selected_unit_index = -1
 	selected_cell = Vector2i(-1, -1)
@@ -412,6 +482,7 @@ func start_turn(team: Team) -> void:
 	for i in range(units.size()):
 		if units[i]["team"] == current_turn_team:
 			units[i]["has_moved"] = false
+			units[i]["has_acted"] = false
 			
 			if is_alive(i) and is_incapacitated(i):
 				units[i]["incapacitation_turns"] -= 1
