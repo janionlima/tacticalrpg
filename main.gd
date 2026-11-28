@@ -30,47 +30,30 @@ var current_action_mode:ActionMode = ActionMode.NONE
 var hovered_cell = Vector2i(-1,-1)
 var selected_cell = Vector2i(-1,-1)
 
-var units = [
-	{
-		"id" = "hero",
-		"name" = "Aldric",
-		"team" = Team.ALLIES,
-		"cell" = Vector2i(3,2),
-		"hp" = 20,
-		"max_hp" = 20,
-		"has_moved" = false,
-		"has_acted" = false,
-		"is_alive" = true,
-		"is_incapacitated" = false,
-		"incapacitation_turns" = 0
-	},
-	{
-		"id" = "enemy_01",
-		"name" = "Goblin",
-		"team" = Team.ENEMIES,
-		"cell" = Vector2i(6,3),
-		"hp" = 12,
-		"max_hp" = 20,
-		"has_moved" = false,
-		"has_acted" = false,
-		"is_alive" = true,
-		"is_incapacitated" = false,
-		"incapacitation_turns" = 0
-	},
-	{
-		"id" = "elara",
-		"name" = "Elara",
-		"team" = Team.ALLIES,
-		"cell" = Vector2i(2, 4),
-		"hp"= 16,
-		"max_hp" = 16,
-		"has_moved" = false,
-		"has_acted" = false,
-		"is_alive" = true,
-		"is_incapacitated"= false,
-		"incapacitation_turns" = 0
-	}
+var units: Array[Unit] = [
+	Unit.new(
+		"hero",
+		"Aldric",
+		Team.ALLIES,
+		Vector2i(3,2),
+		20, 20
+	),
+	Unit.new(
+		"enemy_01",
+		"Goblin",
+		Team.ENEMIES,
+		Vector2i(6,3),
+		12, 20
+	),
+	Unit.new(
+		"elara",
+		"Elara",
+		Team.ALLIES,
+		Vector2i(2,4),
+		16, 16
+	)
 ]
+
 var selected_unit_index = -1
 
 var unit_cell = Vector2i(3,2)
@@ -92,7 +75,7 @@ func _draw() -> void:
 	draw_hovered_tile()
 	
 	for i in range(units.size()):
-		var cell = units[i]["cell"]
+		var cell = units[i].cell
 		
 		if is_incapacitated(i) or not is_alive(i):
 			draw_incapacitated_unit(cell)
@@ -146,7 +129,7 @@ func grid_distance(a: Vector2i, b: Vector2i) -> int:
 
 func is_cell_occupied(cell: Vector2i) -> bool:
 	for i in range(units.size()):
-		if units[i]["cell"] == cell and is_unit_active(i):
+		if units[i].cell == cell and is_unit_active(i):
 			return true
 	return false
 
@@ -313,7 +296,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				
 				# Descobre se existe uma unidade na célula clicada.
 				for i in range(units.size()):
-					if units[i]["cell"] == cell:
+					if units[i].cell == cell:
 						clicked_unit_index = i
 						break
 				
@@ -327,7 +310,7 @@ func _unhandled_input(event: InputEvent) -> void:
 						print("Selecione uma unidade aliada primeiro!")
 					elif  not is_alive(selected_unit_index):
 						print("Esta unidade não pode executar ações!")
-					elif units[selected_unit_index]["has_acted"]:
+					elif units[selected_unit_index].has_acted:
 						print("Esta unidade já executou uma ação neste turno!")
 					elif clicked_unit_index == -1:
 						print("Selecione uma unidade inimiga!")
@@ -335,13 +318,13 @@ func _unhandled_input(event: InputEvent) -> void:
 						var attacker = units[selected_unit_index]
 						var target = units[clicked_unit_index]
 						
-						if target["team"] == attacker["team"] or target["team"] == Team.NEUTRAL:
+						if target.team == attacker.team or target.team == Team.NEUTRAL:
 							print("Selecione uma unidade inimiga!")
-						elif not can_attack(attacker["cell"], target["cell"]):
+						elif not can_attack(attacker.cell, target.cell):
 							print("Alvo fora do alcance do ataque!")
 						else:
 							attack(selected_unit_index, clicked_unit_index)
-							attacker["has_acted"] = true
+							attacker.has_acted = true
 							current_action_mode = ActionMode.NONE
 				elif current_action_mode == ActionMode.REVIVE:
 					#Código do modo de ressurreição
@@ -354,21 +337,21 @@ func _unhandled_input(event: InputEvent) -> void:
 						print("Selecione uma unidade aliada primeiro!")
 					elif not is_unit_active(selected_unit_index):
 						print("Esta unidade não pode executar ações!")
-					elif units[selected_unit_index]["has_acted"]:
+					elif units[selected_unit_index].has_acted:
 						print("Esta unidade já executou uma ação neste turno!")
 					elif clicked_unit_index == -1:
 						print("Selecione uma unidade aliada incapacitada!")
-					elif units[clicked_unit_index]["team"] != Team.ALLIES:
+					elif units[clicked_unit_index].team != Team.ALLIES:
 						print("Só é possível ressucitar unidades aliadas!")
 					elif not is_alive(clicked_unit_index):
 						print("Esta unidade morreu definitivamente!")
 					elif not is_incapacitated(clicked_unit_index):
 						print("Esta unidade não está incapacitada!")
-					elif not can_attack(units[selected_unit_index]["cell"], units[clicked_unit_index]["cell"]):
+					elif not can_attack(units[selected_unit_index].cell, units[clicked_unit_index].cell):
 						print("Unidade incapacitada fora do alcance da ressurreição!")
 					else:
 						revive_unit(clicked_unit_index)
-						units[selected_unit_index]["has_acted"] = true
+						units[selected_unit_index].has_acted = true
 						current_action_mode = ActionMode.NONE
 				#MODO NORMAL: seleção e movimentação
 				else:
@@ -378,7 +361,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					
 						if clicked_unit_index == selected_unit_index:
 							selected_unit_index = -1
-						elif clicked_unit["team"] != current_turn_team:
+						elif clicked_unit.team != current_turn_team:
 							print("Esta unidade não pertence à equipe do turno atual")
 						elif selected_unit_index == -1:
 							selected_unit_index = clicked_unit_index					
@@ -388,12 +371,12 @@ func _unhandled_input(event: InputEvent) -> void:
 					elif selected_unit_index != -1:
 						var unit = units[selected_unit_index]
 						
-						if unit["has_acted"]:
+						if unit.has_acted:
 							print("Esta unidade já executou uma ação neste turno!")
-						elif unit["has_moved"]:
+						elif unit.has_moved:
 							print("Esta unidade já se moveu neste turno")
 						else:
-							var current_cell : Vector2i = units[selected_unit_index]["cell"]
+							var current_cell : Vector2i = units[selected_unit_index].cell
 							#unidade pode se deslocar até lá?
 							var distance = grid_distance(current_cell, cell)
 							
@@ -402,8 +385,8 @@ func _unhandled_input(event: InputEvent) -> void:
 							elif is_cell_occupied(cell):
 								print("Esta célula já está ocupada!")
 							else:
-								unit["cell"] = cell
-								unit["has_moved"] = true
+								unit.cell = cell
+								unit.has_moved = true
 				
 				update_unit_info()				
 				queue_redraw()
@@ -419,9 +402,9 @@ func update_unit_info(unit_index: int = -1):
 		return
 	
 	var unit = units[index_to_display]
-	name_label.text = unit["name"]
+	name_label.text = unit.unit_name
 	
-	match unit["team"]:
+	match unit.team:
 		Team.ALLIES:
 			team_label.text = "Equipe: Aliados"
 		Team.ENEMIES:
@@ -431,7 +414,7 @@ func update_unit_info(unit_index: int = -1):
 		_:
 			team_label.text = "Equipe: Desconhecida"
 	
-	hp_label.text = "HP: %d / %d" % [unit["hp"], unit["max_hp"]	]
+	hp_label.text = "HP: %d / %d" % [unit.hp, unit.max_hp	]
 
 func update_turn_info() -> void:
 	if current_turn_team == Team.ALLIES:
@@ -445,10 +428,10 @@ func is_cell_in_movement_range(cell: Vector2i) -> bool:
 	if selected_unit_index == -1:
 		return false
 	
-	if units[selected_unit_index]["has_moved"]:
+	if units[selected_unit_index].has_moved:
 		return false
 	
-	var unit_cell: Vector2i = units[selected_unit_index]["cell"]
+	var unit_cell: Vector2i = units[selected_unit_index].cell
 	var distance = grid_distance(unit_cell, cell)
 	
 	return distance <= 3
@@ -497,23 +480,23 @@ func start_turn(team: Team) -> void:
 	selected_cell = Vector2i(-1, -1)
 	
 	for i in range(units.size()):
-		if units[i]["team"] == current_turn_team:
-			units[i]["has_moved"] = false
-			units[i]["has_acted"] = false
+		if units[i].team == current_turn_team:
+			units[i].has_moved = false
+			units[i].has_acted = false
 			
 			if is_alive(i) and is_incapacitated(i):
-				units[i]["incapacitation_turns"] -= 1
+				units[i].incapacitation_turns -= 1
 				print(
-					units[i]["name"],
+					units[i].unit_name,
 					" possui ",
-					units[i]["incapacitation_turns"],
+					units[i].incapacitation_turns,
 					" restantes!"
 				)
 				
-				if units[i]["incapacitation_turns"] <= 0:
-					units[i]["is_alive"] = false
+				if units[i].incapacitation_turns <= 0:
+					units[i].is_alive = false
 					print(
-						units[i]["name"],
+						units[i].unit_name,
 						"morreu definitivamente!"
 					)
 			
@@ -531,40 +514,40 @@ func run_enemy_turn() ->void:
 	print("Iniciando turno dos inimigos")
 	
 	for i in range(units.size()):
-		if units[i]["team"] == Team.ENEMIES:
+		if units[i].team == Team.ENEMIES and is_unit_active(i):
 			var enemy = units[i]
-			var target_index = find_nearest_ally(enemy["cell"])
+			var target_index = find_nearest_ally(enemy.cell)
 						
 			if target_index != -1:
 				#inimigo escolhe o alvo
 				var target = units[target_index]
 				print(
-					enemy["name"],
+					enemy.unit_name,
 					" escolheu ",
-					target["name"],
+					target.unit_name,
 					" como alvo!"
 				)
 				#inimigo se move para próximo ao alvo
-				var destination = find_best_move(enemy["cell"], target["cell"])
+				var destination = find_best_move(enemy.cell, target.cell)
 				
-				if destination != enemy["cell"]:
-					units[i]["cell"] = destination
-					units[i]["has_moved"] = true
+				if destination != enemy.cell:
+					units[i].cell = destination
+					units[i].has_moved = true
 					
-					print(enemy["name"], " se moveu para ", destination)					
+					print(enemy.unit_name, " se moveu para ", destination)					
 				else:
-					print(enemy["name"], " não encontrou um movimento válido")
+					print(enemy.unit_name, " não encontrou um movimento válido")
 				
 				# Verifica o alcance de ataque após a movimentação.
-				if can_attack(enemy["cell"], target["cell"]):
-						print(enemy["name"]," está ao alcance do ataque! ")
+				if can_attack(enemy.cell, target.cell):
+						print(enemy.unit_name," está ao alcance do ataque! ")
 						attack(i, target_index)
 						if battle_ended:
 							return
 				else:
-						print(enemy["name"], " ainda está longe demais para atacar! ")
+						print(enemy.unit_name, " ainda está longe demais para atacar! ")
 			else:
-				print(enemy["name"], " não encontrou aliados!")	
+				print(enemy.unit_name, " não encontrou aliados!")	
 	
 	print("Turno dos inimigos concluído!")
 	start_turn(Team.ALLIES)
@@ -574,8 +557,8 @@ func find_nearest_ally(enemy_cell: Vector2i) -> int:
 	var shortest_distance = 999999
 	
 	for i in range(units.size()):
-		if units[i]["team"] == Team.ALLIES and is_unit_active(i):
-			var ally_cell : Vector2i = units[i]["cell"]
+		if units[i].team == Team.ALLIES and is_unit_active(i):
+			var ally_cell : Vector2i = units[i].cell
 			var distance = grid_distance(enemy_cell, ally_cell)
 			
 			if distance < shortest_distance:
@@ -621,33 +604,33 @@ func attack(attacker_index:int, target_index: int) -> void:
 	if not is_unit_active(target_index):
 		return
 	
-	target["hp"] = max(0, target["hp"] - GOBLIN_DAMAGE)
+	target.hp = max(0, target.hp - GOBLIN_DAMAGE)
 	
 	print(
-		attacker["name"],
+		attacker.unit_name,
 		" atacou ",
-		target["name"],
+		target.unit_name,
 		" causando ",
 		GOBLIN_DAMAGE,
 		" pontos de dano!"
 	)
 	print(
-		target["name"],
+		target.unit_name,
 		" possui agora ",
-		target["hp"],
+		target.hp,
 		" HP."
 	)
 	
-	if target["hp"] == 0 and not is_incapacitated(target_index):
-		target["is_incapacitated"] = true
-		target["incapacitation_turns"] = INCAPACITATION_LIMIT
+	if target.hp == 0 and not is_incapacitated(target_index):
+		target.is_incapacitated = true
+		target.incapacitation_turns = INCAPACITATION_LIMIT
 		
-		print(target["name"], " foi incapacitado! ")
+		print(target.unit_name, " foi incapacitado! ")
 		print(
 			" Tempo restante para ",
-			target["name"],
+			target.unit_name,
 			" : ",
-			target["incapacitation_turns"],
+			target.incapacitation_turns,
 			" turnos!"
 		)		
 	update_unit_info(target_index)
@@ -655,10 +638,10 @@ func attack(attacker_index:int, target_index: int) -> void:
 	check_victory()
 
 func is_alive(unit_index: int) -> bool:
-	return units[unit_index]["is_alive"]
+	return units[unit_index].is_alive
 
 func is_incapacitated(unit_index: int) -> bool:
-	return units[unit_index]["is_incapacitated"]
+	return units[unit_index].is_incapacitated
 
 func is_unit_active(unit_index: int) -> bool:
 	return is_alive(unit_index) and not is_incapacitated(unit_index)
@@ -673,14 +656,14 @@ func revive_unit(unit_index: int) -> void:
 		return
 	
 	var unit = units[unit_index]
-	unit["hp"] = ceili(unit["max_hp"] * 0.5)
-	unit["is_incapacitated"] = false
-	unit["incapacitation_turns"] = 0
+	unit.hp = ceili(unit.max_hp * 0.5)
+	unit.is_incapacitated = false
+	unit.incapacitation_turns = 0
 	
 	print(
-		unit["name"],
+		unit.unit_name,
 		" retornou com ",
-		unit["hp"],
+		unit.hp,
 		" HP."
 	)
 	
@@ -691,7 +674,7 @@ func check_game_over()-> void:
 	var active_allies = 0
 	
 	for i in range(units.size()):
-		if units[i]["team"] == Team.ALLIES and is_unit_active(i):
+		if units[i].team == Team.ALLIES and is_unit_active(i):
 			active_allies += 1
 	
 	if active_allies == 0:
@@ -716,7 +699,7 @@ func check_victory()-> void:
 	var active_enemies = 0
 	
 	for i in range(units.size()):
-		if units[i]["team"] == Team.ENEMIES and is_unit_active(i):
+		if units[i].team == Team.ENEMIES and is_unit_active(i):
 			active_enemies += 1
 	
 	if active_enemies == 0:
