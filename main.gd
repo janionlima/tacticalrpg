@@ -109,10 +109,16 @@ func _ready() -> void:
 	attack_button.pressed.connect(_on_attack_button_pressed)
 
 func _on_revive_button_pressed() -> void:
+	if battle_ended:
+		return
+	
 	current_action_mode = ActionMode.REVIVE
 	print("Modo de Ressurreição ativado")
 
 func _on_attack_button_pressed() -> void:
+	if battle_ended:
+		return
+	
 	current_action_mode = ActionMode.ATTACK
 	print("Modo de Ataque ativado")
 
@@ -292,6 +298,9 @@ func draw_selected_unit(cell: Vector2i):
 	)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if battle_ended:
+		return
+
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			var mouse_pos = get_local_mouse_position()
@@ -469,6 +478,9 @@ func draw_movement_range() -> void:
 					1.0 )
 
 func reset_turn() ->void:
+	if battle_ended:
+		return
+
 	if current_turn_team != Team.ALLIES:
 		return
 	
@@ -640,6 +652,7 @@ func attack(attacker_index:int, target_index: int) -> void:
 		)		
 	update_unit_info(target_index)
 	check_game_over()
+	check_victory()
 
 func is_alive(unit_index: int) -> bool:
 	return units[unit_index]["is_alive"]
@@ -687,9 +700,38 @@ func check_game_over()-> void:
 		selected_unit_index = -1
 		selected_cell = Vector2i(-1,-1)
 		
+		new_turno_button.disabled = true
+		attack_button.disabled = true
+		revive_button.disabled = true
+		
 		print("================================")
 		print("GAME OVER!")
 		print("Todos os aliados foram derrotados!")
+		print("================================")
+		
+		update_unit_info()
+		queue_redraw()
+
+func check_victory()-> void:
+	var active_enemies = 0
+	
+	for i in range(units.size()):
+		if units[i]["team"] == Team.ENEMIES and is_unit_active(i):
+			active_enemies += 1
+	
+	if active_enemies == 0:
+		battle_ended = true
+		current_action_mode = ActionMode.NONE
+		selected_unit_index = -1
+		selected_cell = Vector2i(-1,-1)
+		
+		new_turno_button.disabled = true
+		attack_button.disabled = true
+		revive_button.disabled = true
+		
+		print("================================")
+		print("VITÓRIA!")
+		print("Todos os inimigos foram derrotados!")
 		print("================================")
 		
 		update_unit_info()
